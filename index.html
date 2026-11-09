@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cloud Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a lab bench. Top bar with three numbered experiments; each experiment = controls + live stage + log. Dark-only, matches the deck. */
+:root{
+  --bg:#17191E; --panel:#1F2328; --raise:#2B3038; --line:#3A404A;
+  --fg:#F2F3F5; --muted:#A3A9B3; --violet:#7C5CFF; --violet-d:#5B3DF0; --mint:#19C79A; --amber:#F2A93B; --red:#F0606A;
+  --display:"Sora", "Segoe UI", system-ui, sans-serif; --mono:"JetBrains Mono", "Courier New", monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--display);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{display:grid;grid-template-columns:repeat(2,12px);gap:3px}
+.logo i{width:12px;height:12px;border-radius:3px;background:var(--violet)}
+.logo i:nth-child(2){background:var(--mint)}.logo i:nth-child(3){background:var(--raise)}
+h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{font-family:var(--mono);font-size:12px;color:var(--muted)}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+nav button{font:600 14px var(--display);color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;display:flex;gap:8px;align-items:center}
+nav button b{font-family:var(--mono);color:var(--violet)}
+nav button[aria-selected="true"]{background:var(--violet);border-color:var(--violet);color:#fff}
+nav button[aria-selected="true"] b{color:#fff}
+button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+.intro{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:baseline;padding-bottom:4px}
+.intro h2{margin:0;font-size:28px;letter-spacing:-.02em;text-wrap:balance}
+.intro p{margin:0;color:var(--muted);max-width:62ch}
+.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border-radius:18px;padding:18px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.ptitle{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:flex;justify-content:space-between;gap:8px}
+.controls{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font:600 14px var(--display);border:0;border-radius:12px;padding:12px 16px;cursor:pointer;background:var(--raise);color:var(--fg);display:inline-flex;gap:8px;align-items:center}
+.btn.primary{background:var(--violet);color:#fff}.btn.mint{background:var(--mint);color:#0B2A22}.btn.danger{background:#3A2328;color:#FFB3B8}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn code{font-family:var(--mono);font-size:12px;opacity:.75;font-weight:400}
+.term{background:#0F1115;border-radius:14px;padding:14px;font-family:var(--mono);font-size:13px;height:300px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+.term .c{color:var(--mint)}.term .d{color:var(--muted)}.term .w{color:var(--amber)}.term .e{color:var(--red)}.term .v{color:#B9A6FF}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{background:var(--raise);border-radius:14px;padding:12px 14px}
+.stat .n{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .l{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+/* containers */
+.image{display:flex;flex-direction:column;gap:6px}
+.layer{font-family:var(--mono);font-size:12px;padding:8px 10px;border-radius:8px;background:var(--raise);color:var(--muted);transition:background .3s,color .3s}
+.layer.done{background:#2A2450;color:#D8CFFF}
+.ctrs{display:flex;flex-wrap:wrap;gap:10px;min-height:96px}
+.ctr{width:150px;border-radius:14px;padding:12px;background:var(--raise);border:2px solid var(--mint);font-family:var(--mono);font-size:12px;display:flex;flex-direction:column;gap:4px;animation:pop .35s ease}
+.ctr.starting{border-color:var(--amber)}.ctr.dead{border-color:var(--red);opacity:.45;filter:grayscale(.6)}
+.ctr b{font-size:14px;color:var(--fg)}
+.ghost{color:var(--muted);font-size:13px;border:1px dashed var(--line);border-radius:14px;padding:14px;flex:1}
+.browser{border-radius:14px;overflow:hidden;background:#0F1115;border:1px solid var(--line)}
+.bar{display:flex;gap:6px;align-items:center;padding:8px 10px;background:var(--raise);font-family:var(--mono);font-size:12px;color:var(--muted)}
+.bar i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.bar span{margin-left:6px;background:#0F1115;border-radius:6px;padding:3px 10px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.page{padding:20px;min-height:150px;display:flex;flex-direction:column;gap:6px;justify-content:center}
+.page h3{margin:0;font-size:24px}.page .tag{align-self:flex-start;background:var(--violet);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600}
+.page code{font-family:var(--mono);color:#fff}.page.err{color:var(--muted)}
+/* k8s */
+.nodes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.nodes{grid-template-columns:minmax(0,1fr)}}
+.node{background:var(--raise);border-radius:14px;padding:12px;min-height:170px;display:flex;flex-direction:column;gap:8px;border:2px solid transparent}
+.node.down{border-color:var(--red);background:#2A1E22}
+.node header{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.node .state{font-size:11px;padding:2px 8px;border-radius:99px;background:#163B33;color:var(--mint)}
+.node.down .state{background:#4A2328;color:#FFB3B8}
+.pods{display:flex;flex-wrap:wrap;gap:8px}
+.pod{width:58px;height:58px;border-radius:12px;background:var(--violet);border:0;color:#fff;font:600 10px var(--mono);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;animation:pop .35s ease}
+.pod.starting{background:transparent;border:2px dashed var(--amber);color:var(--amber);animation:pulse 1s infinite}
+.pod.dying{background:var(--red);opacity:.5;transform:scale(.85)}
+.pod small{font-size:9px;opacity:.8}
+.replicas{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.step{display:flex;align-items:center;background:var(--raise);border-radius:12px}
+.step button{width:42px;height:42px;border:0;background:none;color:var(--fg);font-size:20px;cursor:pointer;border-radius:12px}
+.step output{min-width:36px;text-align:center;font:700 22px var(--display)}
+.sync{font-family:var(--mono);font-size:13px;padding:10px 12px;border-radius:12px;background:#163B33;color:var(--mint)}
+.sync.off{background:#3D3220;color:var(--amber)}
+/* serverless */
+.fns{display:flex;flex-wrap:wrap;gap:8px;min-height:120px;align-content:flex-start}
+.fn{width:64px;height:64px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;font:600 10px var(--mono);gap:3px;animation:pop .3s ease;transition:background .2s,border-color .2s}
+.fn.cold{background:transparent;border:2px dashed var(--amber);color:var(--amber)}
+.fn.busy{background:var(--violet);color:#fff}
+.fn.idle{background:transparent;border:2px solid var(--mint);color:var(--mint)}
+.fn.bye{opacity:0;transform:scale(.6);transition:all .4s}
+canvas{width:100%;height:120px;display:block;background:#0F1115;border-radius:12px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.audience{display:flex;flex-direction:column;gap:10px;background:linear-gradient(0deg,var(--raise),var(--raise));border-radius:14px;padding:14px}
+.audience .btn:not(.primary):not(.mint){background:var(--panel)}
+.big{font:700 18px var(--display);width:100%;justify-content:center;padding:18px}
+.note{font-size:12px;color:var(--muted);margin:0}
+[hidden]{display:none!important}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+@keyframes pulse{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <div class="brand"><div class="logo"><i></i><i></i><i></i><i></i></div>
+      <div><h1>Cloud Lab</h1><div class="sub">CC6 live demo · runs in your browser</div></div></div>
+    <nav role="tablist" aria-label="Experiments">
+      <button role="tab" id="tab-containers" data-v="containers" aria-selected="true"><b>01</b>Containers</button>
+      <button role="tab" id="tab-k8s" data-v="k8s" aria-selected="false"><b>02</b>Self-healing</button>
+      <button role="tab" id="tab-serverless" data-v="serverless" aria-selected="false"><b>03</b>Serverless</button>
+    </nav>
+  </header>
+
+  <!-- 01 CONTAINERS -->
+  <section id="v-containers" class="view">
+    <div class="intro"><h2>Build once, replace in a second</h2>
+      <p>Package the Hello CC6 app into an image, run it as a container, then kill it and start a new one. Watch the container ID change.</p></div>
+    <div class="grid">
+      <div class="panel">
+        <div class="controls">
+          <button class="btn primary" id="c-build">Build image <code>docker build</code></button>
+          <button class="btn mint" id="c-run" disabled>Run container <code>docker run</code></button>
+          <button class="btn danger" id="c-kill" disabled>Kill it <code>docker rm -f</code></button>
+        </div>
+        <div class="term" id="c-term" aria-live="polite"></div>
+      </div>
+      <div class="panel">
+        <div class="ptitle"><span>Image: hello-cc6</span><span id="c-imgstate">not built</span></div>
+        <div class="image" id="c-layers">
+          <div class="layer">FROM node:20-alpine</div><div class="layer">WORKDIR /app</div>
+          <div class="layer">COPY server.js .</div><div class="layer">CMD ["node", "server.js"]</div>
+        </div>
+        <div class="ptitle"><span>Containers</span><span id="c-count">0 running</span></div>
+        <div class="ctrs" id="c-ctrs"><div class="ghost">No containers yet. Build the image, then run it.</div></div>
+        <div class="browser"><div class="bar"><i></i><i></i><i></i><span>localhost:8080</span></div>
+          <div class="page err" id="c-page">This site can't be reached. Nothing is running on port 8080.</div></div>
+        <div class="stats"><div class="stat"><div class="n" id="c-repl">0</div><div class="l">Replacements</div></div>
+          <div class="stat"><div class="n" id="c-start">–</div><div class="l">Last start time</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 KUBERNETES -->
+  <section id="v-k8s" class="view" hidden>
+    <div class="intro"><h2>You declare it, Kubernetes keeps it true</h2>
+      <p>Set how many copies you want. Click any pod to kill it, or crash a whole machine. The controller notices and starts replacements on its own.</p></div>
+    <div class="grid">
+      <div class="panel">
+        <div class="replicas">
+          <span class="ptitle" style="display:block">Desired replicas</span>
+          <div class="step"><button id="k-minus" aria-label="Fewer replicas">−</button><output id="k-want">3</output><button id="k-plus" aria-label="More replicas">+</button></div>
+          <div class="sync" id="k-sync">Desired 3 · Running 3 · in sync</div>
+        </div>
+        <div class="nodes" id="k-nodes"></div>
+        <div class="controls">
+          <button class="btn danger" id="k-killpod">Kill a random pod</button>
+          <button class="btn danger" id="k-crash">Crash a node</button>
+          <button class="btn" id="k-fix" disabled>Bring node back</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ptitle"><span>Controller log</span><span>loop every 0.7 s</span></div>
+        <div class="term" id="k-term" aria-live="polite"></div>
+        <div class="stats"><div class="stat"><div class="n" id="k-healed">0</div><div class="l">Pods replaced</div></div>
+          <div class="stat"><div class="n" id="k-humans">0</div><div class="l">Humans needed</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 SERVERLESS -->
+  <section id="v-serverless" class="view" hidden>
+    <div class="intro"><h2>Pay per request, scale to zero</h2>
+      <p>Each request runs the Hello CC6 function. New instances start only when needed (a cold start), then disappear after a few quiet seconds.</p></div>
+    <div class="grid">
+      <div class="panel">
+        <div class="stats">
+          <div class="stat"><div class="n" id="s-req">0</div><div class="l">Requests served</div></div>
+          <div class="stat"><div class="n" id="s-inst">0</div><div class="l">Instances now</div></div>
+          <div class="stat"><div class="n" id="s-cold">0</div><div class="l">Cold starts</div></div>
+          <div class="stat"><div class="n" id="s-cost">₱0.00</div><div class="l">Cost so far*</div></div>
+        </div>
+        <div class="ptitle"><span>Function instances</span><span id="s-zero">scaled to zero</span></div>
+        <div class="fns" id="s-fns"></div>
+        <div class="legend"><span style="--c:var(--amber)">cold start</span><span style="--c:var(--violet)">handling a request</span><span style="--c:var(--mint)">warm, waiting</span></div>
+        <div class="ptitle"><span>Instances over the last 60 s</span></div>
+        <canvas id="s-chart" width="900" height="200" aria-label="Number of function instances over the last minute"></canvas>
+      </div>
+      <div class="panel">
+        <div class="audience">
+          <button class="btn primary big" id="s-one">Send a request</button>
+          <div class="controls"><button class="btn mint" id="s-spike">Class rush: 40 requests</button><button class="btn" id="s-wave">Steady traffic</button></div>
+          <p class="note" id="s-room">Tap a button to call the function.</p>
+        </div>
+        <div class="term" id="s-term" aria-live="polite" style="height:250px"></div>
+        <p class="note">*Illustrative: about ₱0.00001 per request, based on typical pay-per-use function pricing.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const hex = (n) => Array.from({ length: n }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
+const now = () => new Date().toLocaleTimeString("en-PH", { hour12: false });
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+function log(el, html) { const d = document.createElement("div"); d.innerHTML = html; el.appendChild(d); while (el.childNodes.length > 200) el.removeChild(el.firstChild); el.scrollTop = el.scrollHeight; }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------- tabs ---------- */
+const views = ["containers", "k8s", "serverless"];
+function show(v) {
+  if (!views.includes(v)) v = "containers";
+  views.forEach((x) => { $("v-" + x).hidden = x !== v; $("tab-" + x).setAttribute("aria-selected", x === v); });
+}
+document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => { location.hash = b.dataset.v; show(b.dataset.v); }));
+window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+show(location.hash.slice(1));
+
+/* ---------- 01 containers ---------- */
+const C = { built: false, running: null, repl: 0, busy: false };
+const cT = $("c-term");
+function cRender() {
+  $("c-run").disabled = !C.built || !!C.running || C.busy;
+  $("c-kill").disabled = !C.running || C.busy;
+  $("c-build").disabled = C.busy;
+  $("c-count").textContent = (C.running && C.running.state === "up" ? 1 : 0) + " running";
+  const box = $("c-ctrs"); box.innerHTML = "";
+  if (!C.running) box.innerHTML = `<div class="ghost">${C.built ? "Image ready. No container running." : "No containers yet. Build the image, then run it."}</div>`;
+  else box.innerHTML = `<div class="ctr ${C.running.state === "up" ? "" : C.running.state}"><span>container</span><b>${C.running.id}</b><span>${C.running.state === "up" ? "Up · port 8080" : C.running.state === "starting" ? "Starting…" : "Exited"}</span></div>`;
+  const pg = $("c-page");
+  if (C.running && C.running.state === "up") { pg.className = "page"; pg.innerHTML = `<h3>Hello CC6 👋</h3><span class="tag">Running in a Docker container</span><div>Container ID: <code>${C.running.id}</code></div><div>Started at: <code>${C.running.at}</code></div>`; }
+  else { pg.className = "page err"; pg.textContent = "This site can't be reached. Nothing is running on port 8080."; }
+  $("c-repl").textContent = C.repl;
+}
+$("c-build").onclick = async () => {
+  C.busy = true; cRender();
+  log(cT, `<span class="c">$ docker build -t hello-cc6 .</span>`);
+  const layers = document.querySelectorAll("#c-layers .layer");
+  layers.forEach((l) => l.classList.remove("done"));
+  for (let i = 0; i < layers.length; i++) {
+    await wait(C.built ? 150 : 550);
+    layers[i].classList.add("done");
+    log(cT, `<span class="d"> => [${i + 1}/4] ${esc(layers[i].textContent)}${C.built ? "  CACHED" : ""}</span>`);
+  }
+  log(cT, `<span class="v"> => naming to docker.io/library/hello-cc6:latest  done</span>`);
+  C.built = true; C.busy = false; $("c-imgstate").textContent = "built · 4 layers"; cRender();
+};
+async function cRun() {
+  C.busy = true; const t0 = performance.now(); if (C.killed) { C.repl++; C.killed = false; }
+  log(cT, `<span class="c">$ docker run -d -p 8080:8080 --name web hello-cc6</span>`);
+  C.running = { id: hex(12), state: "starting", at: now() }; cRender();
+  await wait(650 + Math.random() * 350);
+  C.running.state = "up"; C.running.at = now();
+  const secs = ((performance.now() - t0) / 1000).toFixed(1);
+  log(cT, `<span class="d">${C.running.id}</span>`);
+  log(cT, `<span class="v">Hello CC6 is running on http://localhost:8080  (started in ${secs} s)</span>`);
+  $("c-start").textContent = secs + " s"; C.busy = false; cRender();
+}
+$("c-run").onclick = cRun;
+$("c-kill").onclick = async () => {
+  C.busy = true; log(cT, `<span class="c">$ docker rm -f web</span>`);
+  C.running.state = "dead"; cRender(); await wait(600);
+  log(cT, `<span class="e">web (${C.running.id}) removed. Nobody fixed it; we threw it away.</span>`);
+  C.running = null; C.busy = false; C.killed = true; cRender();
+  log(cT, `<span class="w">Now press Run container again. You get a brand-new copy with a new ID.</span>`);
+};
+log(cT, `<span class="d"># hello-cc6-demo folder: server.js + Dockerfile</span>`);
+log(cT, `<span class="d"># Step 1: build the image from the Dockerfile recipe</span>`);
+cRender();
+
+/* ---------- 02 kubernetes ---------- */
+const K = { lost: 0, want: 3, nodes: [{ name: "node-1", up: true }, { name: "node-2", up: true }, { name: "node-3", up: true }], pods: [], healed: 0, seq: 0 };
+const kT = $("k-term");
+function newPod(silent) {
+  const healthy = K.nodes.map((n, i) => ({ n, i })).filter((x) => x.n.up);
+  if (!healthy.length) return;
+  healthy.sort((a, b) => K.pods.filter((p) => p.node === a.i).length - K.pods.filter((p) => p.node === b.i).length);
+  const pod = { id: "web-" + hex(5), node: healthy[0].i, state: "starting" };
+  K.pods.push(pod);
+  if (!silent) log(kT, `<span class="w">→ scheduling ${pod.id} on ${K.nodes[pod.node].name}</span>`);
+  setTimeout(() => { if (K.pods.includes(pod) && pod.state === "starting") { pod.state = "running"; kRender(); if (!silent) log(kT, `<span class="c">✓ ${pod.id} running</span>`); } }, silent ? 0 : 1300);
+}
+function killPod(p, why) {
+  if (!p || p.state === "dying") return;
+  p.state = "dying"; if (why !== "scaled down") K.lost++; log(kT, `<span class="e">✗ ${p.id} ${why}</span>`); kRender();
+  setTimeout(() => { K.pods = K.pods.filter((x) => x !== p); kRender(); }, 450);
+}
+function kRender() {
+  $("k-want").textContent = K.want;
+  const alive = K.pods.filter((p) => p.state !== "dying");
+  const running = alive.filter((p) => p.state === "running").length;
+  const ok = running === K.want && alive.length === K.want;
+  const s = $("k-sync"); s.className = "sync" + (ok ? "" : " off");
+  s.textContent = `Desired ${K.want} · Running ${running} · ${ok ? "in sync" : "fixing…"}`;
+  const box = $("k-nodes"); box.innerHTML = "";
+  K.nodes.forEach((n, i) => {
+    const el = document.createElement("div"); el.className = "node" + (n.up ? "" : " down");
+    el.innerHTML = `<header style="display:flex;justify-content:space-between;align-items:center"><span>${n.name}</span><span class="state">${n.up ? "Ready" : "NotReady"}</span></header><div class="pods"></div>`;
+    const pods = el.querySelector(".pods");
+    K.pods.filter((p) => p.node === i).forEach((p) => {
+      const b = document.createElement("button"); b.className = "pod " + (p.state === "running" ? "" : p.state);
+      b.innerHTML = `${p.id.slice(4)}<small>${p.state === "running" ? "pod" : p.state}</small>`;
+      b.setAttribute("aria-label", "Kill pod " + p.id); b.onclick = () => killPod(p, "killed by a click");
+      pods.appendChild(b);
+    });
+    box.appendChild(el);
+  });
+  $("k-healed").textContent = K.healed; $("k-fix").disabled = K.nodes.every((n) => n.up); $("k-crash").disabled = K.nodes.filter((n) => n.up).length < 2;
+}
+function reconcile() {
+  const alive = K.pods.filter((p) => p.state !== "dying");
+  if (alive.length < K.want) {
+    log(kT, `<span class="d">[${now()}] desired ${K.want}, have ${alive.length}</span>`);
+    newPod(); if (K.lost > 0) { K.healed++; K.lost--; }
+  } else if (alive.length > K.want) {
+    log(kT, `<span class="d">[${now()}] desired ${K.want}, have ${alive.length}</span>`);
+    killPod(alive[alive.length - 1], "scaled down");
+  }
+  kRender();
+}
+$("k-minus").onclick = () => { if (K.want > 1) { K.want--; K.lost = 0; log(kT, `<span class="v">$ kubectl scale deployment web --replicas=${K.want}</span>`); kRender(); } };
+$("k-plus").onclick = () => { if (K.want < 8) { K.want++; log(kT, `<span class="v">$ kubectl scale deployment web --replicas=${K.want}</span>`); kRender(); } };
+$("k-killpod").onclick = () => { const a = K.pods.filter((p) => p.state === "running"); killPod(a[Math.floor(Math.random() * a.length)], "crashed"); };
+$("k-crash").onclick = () => {
+  const up = K.nodes.map((n, i) => i).filter((i) => K.nodes[i].up); const i = up[Math.floor(Math.random() * up.length)];
+  K.nodes[i].up = false; log(kT, `<span class="e">⚡ ${K.nodes[i].name} lost power</span>`);
+  K.pods.filter((p) => p.node === i).forEach((p) => killPod(p, "lost with " + K.nodes[i].name)); kRender();
+};
+$("k-fix").onclick = () => { const n = K.nodes.find((x) => !x.up); n.up = true; log(kT, `<span class="c">${n.name} is Ready again</span>`); kRender(); };
+for (let i = 0; i < 3; i++) newPod(true);
+log(kT, `<span class="v">$ kubectl apply -f deployment.yaml   # replicas: 3</span>`);
+log(kT, `<span class="d">Controller watching. Click a pod to kill it.</span>`);
+K.pods.forEach((p) => (p.state = "running")); kRender();
+setInterval(reconcile, 700);
+
+/* ---------- 03 serverless ---------- */
+const S = { fns: [], queue: [], req: 0, cold: 0, history: [], wave: null };
+const sT = $("s-term"); const PESO_PER_REQ = 0.00001;
+function sRender() {
+  $("s-req").textContent = S.req; $("s-inst").textContent = S.fns.length; $("s-cold").textContent = S.cold;
+  $("s-cost").textContent = "₱" + (S.req * PESO_PER_REQ).toFixed(5);
+  $("s-zero").textContent = S.fns.length ? S.fns.length + " running" : "scaled to zero";
+  const box = $("s-fns"); const have = new Set();
+  S.fns.forEach((f) => {
+    have.add(f.id); let el = box.querySelector(`[data-id="${f.id}"]`);
+    if (!el) { el = document.createElement("div"); el.dataset.id = f.id; box.appendChild(el); }
+    el.className = "fn " + f.state; el.innerHTML = `${f.id.slice(0, 4)}<small>${f.state === "cold" ? "cold" : f.state === "busy" ? "busy" : "warm"}</small>`;
+  });
+  box.querySelectorAll(".fn").forEach((el) => { if (!have.has(el.dataset.id) && !el.classList.contains("bye")) { el.classList.add("bye"); setTimeout(() => el.remove(), 400); } });
+  if (!S.fns.length && !box.querySelector(".fn")) box.innerHTML = `<div class="ghost">No instances running. Nothing is costing money right now.</div>`;
+  else box.querySelector(".ghost")?.remove();
+}
+function dispatch() {
+  while (S.queue.length) {
+    let f = S.fns.find((x) => x.state === "idle");
+    if (!f) {
+      if (S.fns.length >= 24) return;
+      f = { id: hex(6), state: "cold", last: Date.now() }; S.fns.push(f); S.cold++;
+      log(sT, `<span class="w">❄ cold start: new instance ${f.id.slice(0, 4)}</span>`);
+      const r = S.queue.shift(); sRender();
+      setTimeout(() => run(f, r, true), 700 + Math.random() * 400); continue;
+    }
+    run(f, S.queue.shift(), false);
+  }
+}
+function run(f, r, wasCold) {
+  f.state = "busy"; sRender();
+  setTimeout(() => {
+    f.state = "idle"; f.last = Date.now(); S.req++;
+    log(sT, `<span class="${wasCold ? "w" : "c"}">200 OK  ${r.from}  →  ${f.id.slice(0, 4)}${wasCold ? "  (after cold start)" : ""}</span>`);
+    sRender(); dispatch();
+  }, 250 + Math.random() * 250);
+}
+function request(from = "you") { S.queue.push({ from }); dispatch(); }
+setInterval(() => {
+  const t = Date.now(); const before = S.fns.length;
+  S.fns = S.fns.filter((f) => !(f.state === "idle" && t - f.last > 5000));
+  if (S.fns.length < before) { log(sT, `<span class="d">idle 5 s → ${before - S.fns.length} instance(s) shut down${S.fns.length ? "" : ". Scaled to zero."}</span>`); sRender(); }
+}, 500);
+/* chart */
+const cv = $("s-chart"), cx = cv.getContext("2d");
+setInterval(() => { S.history.push(S.fns.length); if (S.history.length > 120) S.history.shift(); draw(); }, 500);
+function draw() {
+  const w = cv.width, h = cv.height, pad = 28; cx.clearRect(0, 0, w, h);
+  const max = Math.max(4, ...S.history); cx.font = "20px JetBrains Mono, monospace"; cx.fillStyle = "#A3A9B3";
+  cx.strokeStyle = "#2B3038"; cx.lineWidth = 1;
+  [0, max].forEach((v) => { const y = h - pad - (v / max) * (h - pad * 2); cx.beginPath(); cx.moveTo(48, y); cx.lineTo(w - 10, y); cx.stroke(); cx.fillText(String(v), 8, y + 6); });
+  if (S.history.length < 2) return;
+  const step = (w - 58) / 119; const x0 = w - 10 - (S.history.length - 1) * step;
+  cx.beginPath(); S.history.forEach((v, i) => { const x = x0 + i * step, y = h - pad - (v / max) * (h - pad * 2); i ? cx.lineTo(x, y) : cx.moveTo(x, y); });
+  cx.strokeStyle = "#7C5CFF"; cx.lineWidth = 4; cx.stroke();
+  cx.lineTo(x0 + (S.history.length - 1) * step, h - pad); cx.lineTo(x0, h - pad); cx.closePath(); cx.fillStyle = "rgba(124,92,255,.18)"; cx.fill();
+  const lv = S.history[S.history.length - 1]; const ly = h - pad - (lv / max) * (h - pad * 2);
+  cx.fillStyle = lv ? "#7C5CFF" : "#19C79A"; cx.beginPath(); cx.arc(w - 10, ly, 7, 0, 7); cx.fill();
+}
+$("s-one").onclick = () => request("you");
+$("s-spike").onclick = () => { log(sT, `<span class="v">⚡ 40 classmates open the link at once</span>`); for (let i = 0; i < 40; i++) setTimeout(() => request("student-" + (i + 1)), Math.random() * 1500); };
+$("s-wave").onclick = () => {
+  if (S.wave) { clearInterval(S.wave); S.wave = null; $("s-wave").textContent = "Steady traffic"; log(sT, `<span class="d">traffic stopped</span>`); return; }
+  $("s-wave").textContent = "Stop traffic"; log(sT, `<span class="v">steady traffic: about 3 requests per second</span>`);
+  S.wave = setInterval(() => request("visitor"), 330);
+};
+log(sT, `<span class="d"># Hello CC6 deployed as a function. No servers running yet.</span>`);
+sRender(); draw();
+
+</script>
+
+</body>
+</html>
